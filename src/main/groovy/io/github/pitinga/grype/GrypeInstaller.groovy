@@ -33,9 +33,9 @@ class GrypeInstaller {
     private final File gradleHome
     private final File projectRoot
     private final Logger logger
-    private final GrypeExtension config
+    private final GrypeInstallation config
 
-    GrypeInstaller(File gradleHome, File projectRoot, Logger logger, GrypeExtension config) {
+    GrypeInstaller(File gradleHome, File projectRoot, Logger logger, GrypeInstallation config) {
         this.gradleHome = gradleHome
         this.projectRoot = projectRoot
         this.logger = logger

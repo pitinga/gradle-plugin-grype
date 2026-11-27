@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*
 class GrypeInstallerTest {
     @Test
     void usesLatestStableGrypeByDefaultWhilePreferringPath() {
-        def settings = new GrypeExtension()
+        def settings = new GrypeInstallation()
         assertEquals('latest', settings.version)
         assertTrue(settings.preferInstalled)
         assertTrue(settings.autoInstall)

@@ -1,10 +1,12 @@
 package io.github.pitinga.grype
+
 import org.gradle.testkit.runner.GradleRunner
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.nio.file.Files
 import static org.junit.jupiter.api.Assertions.*
+
 class GrypePluginTest {
     @TempDir Path projectDir
     def runBuild(String extra,String... args) {
@@ -19,8 +21,13 @@ class GrypePluginTest {
         assertTrue(result.output.contains(':grype SKIPPED'))
     }
     @Test void explicitTargetSkipsJar() {
-        def result = runBuild("grype { target = '.'; sourceType = 'dir' }",'grype','--dry-run')
-        assertFalse(result.output.contains(':jar SKIPPED'))
+        assertFalse(runBuild("grype { target = 'dir:.' }",'grype','--dry-run').output.contains(':jar SKIPPED'))
+    }
+    @Test void commandsDoNotBuildJar() {
+        assertFalse(runBuild("grype { command = ['db','status']; output = 'json' }",'grype','--dry-run').output.contains(':jar SKIPPED'))
+    }
+    @Test void nativeVersionFlagDoesNotBuildJar() {
+        assertFalse(runBuild("grype { version = true }",'grype','--dry-run').output.contains(':jar SKIPPED'))
     }
     @Test void registersInstall() {
         assertTrue(runBuild('','tasks','--all').output.contains('grypeInstall'))
@@ -29,23 +36,25 @@ class GrypePluginTest {
         assertNotEquals('unknown',GrypeTaskBase.pluginArtifactVersion())
         assertEquals('0.122.0',GrypeTaskBase.parseGrypeCliVersion('Application: grype\nVersion: 0.122.0\n'))
     }
-    Map defaults() {
-        def e = new GrypeExtension()
-        ['format','failOn','scope','sortBy','distro','platform','name','template','ignoreStates','verbose','onlyFixed','onlyNotFixed','byCve','addCpesIfNone','showSuppressed','quiet','dbAutoUpdate','sourceType','target'].collectEntries { [(it):e[it].toString()] }
+    @Test void literalNativeFlags() {
+        assertEquals(['--output=json','--output=table=report.txt','--only-fixed=true','--only-notfixed=false','--fail-on=high','--exclude=./build/**','--verbose=2'],
+            GrypeArguments.build([output:['json','table=report.txt'],'only-fixed':true,'only-notfixed':false,'fail-on':'high',exclude:['./build/**'],verbose:2]))
     }
-    Map lists() {
-        ['excludePaths','fromSources','configFiles','profiles','vexFiles','additionalArguments','additionalFormats'].collectEntries { [(it):[]] }
+    @Test void allDocumentedNamesAreAcceptedLiterally() {
+        GrypeArguments.DOCUMENTED.each { key ->
+            assertTrue(GrypeArguments.build([(key):key == 'verbose' ? 1 : 'value']).first().startsWith('--'+key+'='))
+        }
+        assertEquals(['--future-grype-option=hello'],GrypeArguments.build(['future-grype-option':'hello']))
+        assertThrows(RuntimeException) { GrypeArguments.build([onlyFixed:true]) }
     }
-    @Test void nativeFlags() {
-        def args = GrypeArguments.build(defaults()+[onlyFixed:'true',failOn:'high',format:'json',byCve:'true'],lists()+[excludePaths:['./build/**']])
-        assertEquals(['--output','json','--fail-on','high','--exclude','./build/**','--only-fixed','--by-cve'],args)
+    @Test void nativePropertiesOverrideDsl() {
+        def result = runBuild("grype { options = ['only-fixed':false,output:'table']; target = 'dir:.' }; afterEvaluate { println 'ARGS=' + tasks.named('grype').get().nativeOptions.get() }",'grype','--dry-run','-Pgrype.only-fixed=true','-Pgrype.output=json')
+        assertTrue(result.output.contains('--only-fixed=true'))
+        assertTrue(result.output.contains('--output=json'))
     }
-    @Test void rejectsConflicts() {
-        assertThrows(RuntimeException) { GrypeArguments.build(defaults()+[onlyFixed:'true',onlyNotFixed:'true'],lists()) }
-    }
-    @Test void mapsSources() {
-        File dir = projectDir.toFile()
-        assertEquals('dir:'+dir.absolutePath,GrypeArguments.source(defaults()+[target:dir.absolutePath],dir,null,[]))
-        assertEquals('registry:alpine:3.20',GrypeArguments.source(defaults()+[sourceType:'registry',target:'alpine:3.20'],dir,null,[]))
+    @Test void preservesPrefixesAndImageReferences() {
+        ['dir:.','file:C:\\folder\\app.jar','registry:alpine:3.20','sbom:report.json','pkg:maven/log4j/log4j@1.2.17'].each {
+            assertEquals(it,GrypeArguments.target(it,null))
+        }
     }
 }

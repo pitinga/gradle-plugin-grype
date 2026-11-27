@@ -36,7 +36,7 @@ abstract class GrypeTaskBase extends DefaultTask {
 
     protected File resolveExecutable() {
         // Task inputs are snapshots of the extension values configured by the build.
-        GrypeExtension options = new GrypeExtension()
+        GrypeInstallation options = new GrypeInstallation()
         options.version = grypeVersion.get()
         options.autoInstall = autoInstall.get()
         options.preferInstalled = preferInstalled.get()

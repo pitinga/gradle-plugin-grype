@@ -30,7 +30,7 @@ jobs:
           "pluginManagement { includeBuild('..') }; rootProject.name = 'smoke'" | Set-Content smoke/settings.gradle
           @'
           plugins { id 'java'; id 'io.github.pitinga.grype' }
-          grype { preferInstalled = false; version = '0.122.0' }
+          grype { installation { preferInstalled = false; version = '0.122.0' } }
           '@ | Set-Content smoke/build.gradle
           '{"name":"smoke","version":"1.0.0","dependencies":{"lodash":"4.17.15"}}' | Set-Content smoke/package.json
           '{"name":"smoke","version":"1.0.0","lockfileVersion":1,"dependencies":{"lodash":{"version":"4.17.15"}}}' | Set-Content smoke/package-lock.json
@@ -41,14 +41,14 @@ jobs:
         run: |
           gradle -p smoke grypeInstall grype --no-daemon --stacktrace
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p smoke grype '-PgrypeSourceType=dir' '-PgrypeTarget=.' '-PgrypeFormat=json' '-PgrypeOutput=build/reports/grype.json' --no-daemon --stacktrace
+          gradle -p smoke grype '-Pgrype.target=dir:.' '-Pgrype.output=json' '-Pgrype.file=build/reports/grype.json' --no-daemon --stacktrace
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $report = Get-Content smoke/build/reports/grype.json -Raw | ConvertFrom-Json
           if (-not ($report.matches | Where-Object { $_.artifact.name -eq 'lodash' })) { throw 'Known vulnerable fixture not detected' }
       - name: Verify vulnerability threshold fails and retains JSON report
         shell: pwsh
         run: |
-          gradle -p smoke grype '-PgrypeSourceType=dir' '-PgrypeTarget=.' '-PgrypeFormat=json' '-PgrypeOutput=build/reports/gate.json' '-PgrypeFailOn=high' --no-daemon
+          gradle -p smoke grype '-Pgrype.target=dir:.' '-Pgrype.output=json' '-Pgrype.file=build/reports/gate.json' '-Pgrype.fail-on=high' --no-daemon
           if ($LASTEXITCODE -eq 0) { throw 'Vulnerability gate did not fail' }
           if (-not (Test-Path smoke/build/reports/gate.json)) { throw 'Failed scan did not retain report' }
           $report = Get-Content smoke/build/reports/gate.json -Raw | ConvertFrom-Json

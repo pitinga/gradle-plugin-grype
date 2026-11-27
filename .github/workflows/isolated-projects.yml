@@ -59,9 +59,8 @@ jobs:
               id 'io.github.pitinga.grype'
           }
           grype {
-              target = '.'
-              sourceType = 'dir'
-              excludePaths = ['./.gradle/grype/**']
+              target = 'dir:.'
+              exclude = ['./.gradle/grype/**']
           }
           '@ | Set-Content -Encoding utf8 'isolated-smoke/lib/build.gradle'
 
@@ -91,5 +90,5 @@ jobs:
       - name: Check isolated configuration of an explicit directory scan
         shell: pwsh
         run: |
-          gradle -p isolated-smoke :lib:grype '-PgrypeSourceType=dir' '-PgrypeTarget=.' --isolated-projects --dry-run --no-daemon --stacktrace --warning-mode all
+          gradle -p isolated-smoke :lib:grype '-Pgrype.target=dir:.' --isolated-projects --dry-run --no-daemon --stacktrace --warning-mode all
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

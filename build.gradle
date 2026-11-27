@@ -1,0 +1,60 @@
+plugins {
+    id 'groovy'
+    id 'com.gradle.plugin-publish' version '2.2.1'
+}
+
+group = 'io.github.pitinga'
+version = '0.1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation localGroovy()
+    testImplementation gradleTestKit()
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+// Embed the plugin artifact's own version in the resource consumed at task runtime.
+def embeddedPluginVersion = project.version.toString()
+tasks.named('processResources') {
+    inputs.property('embeddedPluginVersion', embeddedPluginVersion)
+    filesMatching('io/github/pitinga/grype/plugin.properties') {
+        expand(pluginVersion: embeddedPluginVersion)
+    }
+}
+
+gradlePlugin {
+    website = 'https://github.com/pitinga/gradle-plugin-grype'
+    vcsUrl = 'https://github.com/pitinga/gradle-plugin-grype'
+
+    plugins {
+        grypePlugin {
+            id = 'io.github.pitinga.grype'
+            implementationClass = 'io.github.pitinga.grype.GrypePlugin'
+            displayName = 'Gradle Grype Plugin'
+            description = 'Install Grype and scan JARs, directories, images and SBOMs for vulnerabilities'
+            tags.set(['grype', 'security', 'vulnerability', 'spring-boot', 'java'])
+            compatibility(it) {
+                features {
+                    configurationCache = true
+                    isolatedProjects = true
+                }
+            }
+        }
+    }
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

@@ -1,0 +1,58 @@
+name: Publish Gradle Plugin Portal
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        description: Stable GitHub release tag
+        type: string
+      operation:
+        required: true
+        type: choice
+        default: validate
+        options: [validate, publish]
+permissions:
+  contents: read
+concurrency:
+  group: grype-plugin-portal
+  cancel-in-progress: false
+jobs:
+  portal:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify release tag
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$TAG" =~ ^v0\.[0-9]+\.[0-9]+$ ]]
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.9.0'
+      - name: Verify version and build
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          grep -Fx "version = '${TAG#v}'" build.gradle
+          gradle --no-daemon clean test validatePlugins --warning-mode all
+      - name: Validate portal submission
+        env:
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+        run: gradle --no-daemon publishPlugins --validate-only
+      - name: Publish
+        if: inputs.operation == 'publish'
+        env:
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+        run: gradle --no-daemon publishPlugins

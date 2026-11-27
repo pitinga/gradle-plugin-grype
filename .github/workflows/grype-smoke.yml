@@ -45,6 +45,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $report = Get-Content smoke/build/reports/grype.json -Raw | ConvertFrom-Json
           if (-not ($report.matches | Where-Object { $_.artifact.name -eq 'lodash' })) { throw 'Known vulnerable fixture not detected' }
+      - name: Compare every native flag with actual Grype help
+        shell: pwsh
+        run: |
+          $cache = if ($env:GRADLE_USER_HOME) { $env:GRADLE_USER_HOME } else { Join-Path $HOME '.gradle' }
+          $binary = Get-ChildItem (Join-Path $cache 'grype/0.122.0') -Recurse -File | Where-Object { $_.Name -in @('grype','grype.exe') } | Select-Object -First 1
+          if (-not $binary) { throw 'Installed Grype binary not found' }
+          ./scripts/Test-GrypeParameterContract.ps1 -Executable $binary.FullName -SourceFile src/main/groovy/io/github/pitinga/grype/GrypeArguments.groovy
       - name: Verify vulnerability threshold fails and retains JSON report
         shell: pwsh
         run: |

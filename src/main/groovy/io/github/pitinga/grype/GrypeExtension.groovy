@@ -135,6 +135,4 @@ class GrypeExtension {
     void setId(Object value) { option('id', value) }
     Object getId() { nativeValues['id'] }
 
-    void setNoDescriptions(Object value) { option('noDescriptions', value) }
-    Object getNoDescriptions() { nativeValues['no-descriptions'] }
 }

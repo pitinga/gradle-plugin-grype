@@ -5,8 +5,8 @@ import groovy.json.JsonSlurper
 
 /** Preserve native Grype names, values, repetitions and command order. */
 class GrypeArguments {
-    static final List<String> DOCUMENTED = ['add-cpes-if-none','by-cve','config','distro','exclude','fail-on','file','from','help','ignore-states','name','only-fixed','only-notfixed','output','platform','profile','quiet','scope','show-suppressed','sort-by','template','verbose','version','vex','load','packages','vulns','broad-cpe-matching','ecosystem','fixed-state','limit','modified-after','pkg','provider','published-after','vuln','id','no-descriptions'].asImmutable()
-    static final Set<String> BOOLEAN_FLAGS = ['add-cpes-if-none','by-cve','help','only-fixed','only-notfixed','quiet','show-suppressed','version','load','packages','vulns','broad-cpe-matching','no-descriptions'] as Set
+    static final List<String> DOCUMENTED = ['add-cpes-if-none','by-cve','config','distro','exclude','fail-on','file','from','help','ignore-states','name','only-fixed','only-notfixed','output','platform','profile','quiet','scope','show-suppressed','sort-by','template','verbose','version','vex','load','packages','vulns','broad-cpe-matching','ecosystem','fixed-state','limit','modified-after','pkg','provider','published-after','vuln','id'].asImmutable()
+    static final Set<String> BOOLEAN_FLAGS = ['add-cpes-if-none','by-cve','help','only-fixed','only-notfixed','quiet','show-suppressed','version','load','packages','vulns','broad-cpe-matching'] as Set
     static String nativeName(String property) {
         if (!(property ==~ /[a-z][a-zA-Z0-9]*/)) {
             throw new GradleException('Use camelCase Grype property names: ' + property)

@@ -77,8 +77,9 @@ Use `output = ['table', 'json=build/reports/grype.json']` for multiple native ou
 | `publishedAfter` | `--published-after` |
 | `vuln` | `--vuln` |
 | `id` | `--id` |
-| `noDescriptions` | `--no-descriptions` |
 
 Reference: https://oss.anchore.com/docs/reference/grype/cli/ (documented 0.119.0; CI exercises 0.122.0). Future flags can be set through `option('futureGrypeOption', value)` or `-Pgrype.futureGrypeOption=value` without a plugin update. For repeated CLI properties pass a JSON array as the value. Native config/environment may be set through config, profile and environment (e.g. GRYPE_DB_AUTO_UPDATE); these are not aliases for CLI flags. Installation options are separate because --version is a native boolean flag, not a binary version selector.
+
+See [local test configuration](docs/LOCAL-TEST.md) for every scan setting and independent database command examples. The CI also checks the actual executable's help for flag drift.
 
 Build locally: gradle clean test validatePlugins publishToMavenLocal. Installation verifies SHA-256 and caches in Gradle user home/grype, falling back to project .gradle/grype on permission errors. Native Grype exit codes are preserved as Gradle failures (including 2). Standalone Syft generation is not included. Publication requires stable version and validated CI.

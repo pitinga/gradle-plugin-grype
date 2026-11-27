@@ -27,12 +27,13 @@ class GrypePlugin implements Plugin<Project> {
                 List<String> command = commandOverride == null ? new ArrayList<String>(settings.command) : commandOverride.tokenize(' ')
                 String argsOverride = project.providers.gradleProperty('grype.arguments').orNull
                 List<String> arguments = argsOverride == null ? new ArrayList<String>(settings.arguments) : (new groovy.json.JsonSlurper().parseText(argsOverride) as List).collect { it.toString() }
-                Map<String,Object> opts = new LinkedHashMap<>(settings.options)
-                // Project properties preserve hyphens verbatim. Reserve only plugin controls.
+                Map<String,Object> opts = settings.nativeOptionsSnapshot()
+                // Project properties use the same camelCase names as the DSL.
                 project.providers.gradlePropertiesPrefixedBy('grype.').get().each { key,value ->
                     String name = key.substring('grype.'.length())
                     if (!(name in ['target','command','arguments','installation.version','installation.autoInstall','installation.preferInstalled'])) {
-                        opts[name] = GrypeArguments.propertyValue(name,value)
+                        String nativeName = GrypeArguments.nativeName(name)
+                        opts[nativeName] = GrypeArguments.propertyValue(nativeName,value)
                     }
                 }
                 task.nativeOptions.set(GrypeArguments.build(opts))

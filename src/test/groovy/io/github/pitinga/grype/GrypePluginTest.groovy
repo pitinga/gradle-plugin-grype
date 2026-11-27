@@ -48,9 +48,26 @@ class GrypePluginTest {
         assertThrows(RuntimeException) { GrypeArguments.build([onlyFixed:true]) }
     }
     @Test void nativePropertiesOverrideDsl() {
-        def result = runBuild("grype { options = ['only-fixed':false,output:'table']; target = 'dir:.' }; afterEvaluate { println 'ARGS=' + tasks.named('grype').get().nativeOptions.get() }",'grype','--dry-run','-Pgrype.only-fixed=true','-Pgrype.output=json')
+        def result = runBuild("grype { onlyFixed = false; output = 'table'; target = 'dir:.' }; afterEvaluate { println 'ARGS=' + tasks.named('grype').get().nativeOptions.get() }",'grype','--dry-run','-Pgrype.onlyFixed=true','-Pgrype.output=json')
         assertTrue(result.output.contains('--only-fixed=true'))
         assertTrue(result.output.contains('--output=json'))
+    }
+    @Test void allDocumentedFlagsHaveDirectCamelCaseProperties() {
+        def extension = new GrypeExtension()
+        GrypeArguments.DOCUMENTED.each { flag ->
+            String property = flag.replaceAll(/-([a-z])/) { match, letter -> letter.toUpperCase(Locale.ROOT) }
+            def value = flag == 'verbose' ? 2 : 'sample'
+            extension[property] = value
+            assertEquals(value, extension[property], property)
+            assertEquals(flag, GrypeArguments.nativeName(property))
+            assertEquals(value, extension.nativeOptionsSnapshot()[flag])
+        }
+        extension.option('futureGrypeOption','hello')
+        assertEquals('hello',extension.nativeOptionsSnapshot()['future-grype-option'])
+    }
+    @Test void directDslMapsToNativeFlags() {
+        def result = runBuild("grype { target = 'dir:.'; output = 'json'; file = 'build/report.json'; onlyFixed = true; failOn = 'high'; sortBy = 'severity'; byCve = true; exclude = ['./build/tmp/**'] }; afterEvaluate { println 'ARGS=' + tasks.named('grype').get().nativeOptions.get() }",'grype','--dry-run')
+        ['--output=json','--file=build/report.json','--only-fixed=true','--fail-on=high','--sort-by=severity','--by-cve=true','--exclude=./build/tmp/**'].each { assertTrue(result.output.contains(it),it) }
     }
     @Test void preservesPrefixesAndImageReferences() {
         ['dir:.','file:C:\\folder\\app.jar','registry:alpine:3.20','sbom:report.json','pkg:maven/log4j/log4j@1.2.17'].each {

@@ -48,7 +48,7 @@ jobs:
       - name: Verify vulnerability threshold fails and retains JSON report
         shell: pwsh
         run: |
-          gradle -p smoke grype '-Pgrype.target=dir:.' '-Pgrype.output=json' '-Pgrype.file=build/reports/gate.json' '-Pgrype.fail-on=high' --no-daemon
+          gradle -p smoke grype '-Pgrype.target=dir:.' '-Pgrype.output=json' '-Pgrype.file=build/reports/gate.json' '-Pgrype.failOn=high' --no-daemon
           if ($LASTEXITCODE -eq 0) { throw 'Vulnerability gate did not fail' }
           if (-not (Test-Path smoke/build/reports/gate.json)) { throw 'Failed scan did not retain report' }
           $report = Get-Content smoke/build/reports/gate.json -Raw | ConvertFrom-Json

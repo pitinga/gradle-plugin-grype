@@ -14,11 +14,11 @@ class GrypeReportOutputTest {
 
     @Test
     void defaultsToNativeGrypeFormatsOnly() {
-        assertEquals(['table', 'json'], GrypeReportOutput.FORMATS)
+        assertEquals(['table', 'json', 'cyclonedx', 'cyclonedx-json', 'sarif', 'template'], GrypeReportOutput.FORMATS)
         assertEquals(['--output', 'table'], GrypeReportOutput.formatArguments('TABLE'))
         assertEquals(['--output', 'json'], GrypeReportOutput.formatArguments('json'))
         assertThrows(GradleException) { GrypeReportOutput.formatArguments('custom') }
-        assertThrows(GradleException) { GrypeReportOutput.formatArguments('template') }
+        assertEquals(['--output', 'template'], GrypeReportOutput.formatArguments('template'))
     }
 
     @Test

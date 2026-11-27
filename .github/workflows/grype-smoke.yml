@@ -1,0 +1,68 @@
+name: Grype real CLI smoke
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.9.0'
+          cache-provider: basic
+      - name: Create real consumer fixture
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force smoke | Out-Null
+          "pluginManagement { includeBuild('..') }; rootProject.name = 'smoke'" | Set-Content smoke/settings.gradle
+          @'
+          plugins { id 'java'; id 'io.github.pitinga.grype' }
+          grype { installation { preferInstalled = false; version = '0.122.0' } }
+          '@ | Set-Content smoke/build.gradle
+          '{"name":"smoke","version":"1.0.0","dependencies":{"lodash":"4.17.15"}}' | Set-Content smoke/package.json
+          '{"name":"smoke","version":"1.0.0","lockfileVersion":1,"dependencies":{"lodash":{"version":"4.17.15"}}}' | Set-Content smoke/package-lock.json
+      - name: Install, scan built JAR and explicit directory
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gradle -p smoke grypeInstall grype --no-daemon --stacktrace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gradle -p smoke grype '-Pgrype.target=dir:.' '-Pgrype.output=json' '-Pgrype.file=build/reports/grype.json' --no-daemon --stacktrace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Get-Content smoke/build/reports/grype.json -Raw | ConvertFrom-Json
+          if (-not ($report.matches | Where-Object { $_.artifact.name -eq 'lodash' })) { throw 'Known vulnerable fixture not detected' }
+      - name: Compare every native flag with actual Grype help
+        shell: pwsh
+        run: |
+          $cache = if ($env:GRADLE_USER_HOME) { $env:GRADLE_USER_HOME } else { Join-Path $HOME '.gradle' }
+          $binary = Get-ChildItem (Join-Path $cache 'grype/0.122.0') -Recurse -File | Where-Object { $_.Name -in @('grype','grype.exe') } | Select-Object -First 1
+          if (-not $binary) { throw 'Installed Grype binary not found' }
+          ./scripts/Test-GrypeParameterContract.ps1 -Executable $binary.FullName -SourceFile src/main/groovy/io/github/pitinga/grype/GrypeArguments.groovy
+      - name: Verify vulnerability threshold fails and retains JSON report
+        shell: pwsh
+        run: |
+          gradle -p smoke grype '-Pgrype.target=dir:.' '-Pgrype.output=json' '-Pgrype.file=build/reports/gate.json' '-Pgrype.failOn=high' --no-daemon
+          if ($LASTEXITCODE -eq 0) { throw 'Vulnerability gate did not fail' }
+          if (-not (Test-Path smoke/build/reports/gate.json)) { throw 'Failed scan did not retain report' }
+          $report = Get-Content smoke/build/reports/gate.json -Raw | ConvertFrom-Json
+          if (-not ($report.matches | Where-Object { $_.artifact.name -eq 'lodash' })) { throw 'Gate report has no matching fixture' }
+          exit 0
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: grype-reports-${{ matrix.os }}
+          path: smoke/build/reports/*.json
